@@ -1541,7 +1541,7 @@ class Wiki {
 		
 		$capable = false;
 		
-		if (preg_match('/(_wiki|_wikis)/i', join($caps, ',')) > 0) {
+		if (preg_match('/(_wiki|_wikis)/i', implode(',', $caps)) > 0) {
 			if (in_array('administrator', $current_user->roles) || is_super_admin()) {
 				foreach ($caps as $cap) {
 					$allcaps[$cap] = 1;
