@@ -942,7 +942,7 @@ class Wiki {
                 set_post_format( $post, get_option( 'default_post_format' ) );
             // Copy wiki privileges
             $privileges = get_post_meta($post->post_parent, 'incsub_wiki_privileges');
-            update_post_meta($post->ID, 'incsub_wiki_privileges', $privileges[0]);
+            update_post_meta($post->ID, 'incsub_wiki_privileges', $privileges[0] ?? null);
         } else {
             $post->ID = 0;
             $post->post_author = '';
