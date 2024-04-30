@@ -1930,7 +1930,7 @@ class Wiki {
     }
 
     function name_save($post_name) {
-        if ($_POST['post_type'] == 'incsub_wiki' && empty($post_name)) {
+        if ( isset($_POST['post_type']) && $_POST['post_type'] == 'incsub_wiki' && empty($post_name) && isset($_POST['post_title']) ) {
             $post_name = $_POST['post_title'];
         }
 
