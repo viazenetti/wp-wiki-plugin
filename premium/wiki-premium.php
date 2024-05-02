@@ -152,6 +152,17 @@ class Wiki_Premium {
 		?>
 	</td>
 </tr>
+<tr valign="top">
+    <th><label for="incsub_wiki-wiki-gutenberg"><?php _e('Enable Gutenberg Blocks?', 'wiki'); ?></label></th>
+    <td>
+        <select id="incsub_wiki-wiki-gutenberg" name="wiki[wiki_enable_gutenberg]" >
+            <option value="0" <?php selected($this->wiki->get_setting('wiki_enable_gutenberg'), '0'); ?>><?php _e('Disable', 'wiki'); ?></option>
+            <option value="1" <?php selected($this->wiki->get_setting('wiki_enable_gutenberg'), '1'); ?>><?php _e('Enable', 'wiki'); ?></option>
+        </select>
+        <br><span><?php _e('When enabled, editing is always done in the backend', 'wiki'); ?></span>
+    </td>
+</tr>
+
 	<?php
 	}
 	
@@ -170,6 +181,7 @@ class Wiki_Premium {
 		$settings['sub_wiki_name'] = $_POST['wiki']['sub_wiki_name'];
 		$settings['sub_wiki_order_by'] = $_POST['wiki']['sub_wiki_order_by'];
 		$settings['sub_wiki_order'] = $_POST['wiki']['sub_wiki_order'];
+		$settings['wiki_enable_gutenberg'] = $_POST['wiki']['wiki_enable_gutenberg'];
 		return $settings;
 	}
 	

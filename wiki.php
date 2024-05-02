@@ -5,7 +5,7 @@ Plugin URI: http://premium.wpmudev.org/project/wiki
 Description: Add a wiki to your blog
 Author: WPMU DEV
 WDP ID: 168
-Version: 1.2.5.3
+Version: 1.3.0
 Author URI: http://premium.wpmudev.org
 Text Domain: wiki
 */
@@ -13,7 +13,7 @@ Text Domain: wiki
 /*
 Copyright 2007-2014 Incsub (http://incsub.com)
 Author - S H Mohanjith
-Contributors - Jonathan Cowher, Dan Mahavithana
+Contributors - Jonathan Cowher, Dan Mahavithana, viazenetti
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License (Version 2 - GPLv2) as published by
@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 class Wiki {
     // @var string Current version
-    var $version = '1.2.5.3';
+    var $version = '1.3.0';
     // @var string The db prefix
     var $db_prefix = '';
     // @var string The plugin settings
@@ -123,7 +123,13 @@ class Wiki {
 
         add_filter('body_class', array(&$this, 'body_class'), 10);
 
-        add_action('wp_enqueue_scripts', array( &$this, 'wp_enqueue_scripts'), 10);
+        add_action('wp_enqueue_scripts', array(&$this, 'wp_enqueue_scripts'), 10);
+
+        // Alter the post edit form to include a hidden field and script for redirecting back to frontend
+        if ($this->get_setting('wiki_enable_gutenberg')) {
+            add_action('edit_form_advanced', array(&$this, 'edit_form_advanced'));
+            add_action('admin_enqueue_scripts', array(&$this, 'admin_enqueue_redirect_script'));
+        }
     }
 
     /**
@@ -169,6 +175,8 @@ class Wiki {
         $this->db_prefix = ( !empty($wpdb->base_prefix) ) ? $wpdb->base_prefix : $wpdb->prefix;
         $this->plugin_dir = plugin_dir_path(__FILE__);
         $this->plugin_url = plugin_dir_url(__FILE__);
+
+        $this->settings = get_option('wiki_settings');
 
         if ( !defined('WIKI_DEMO_FOR_NON_SUPPORTER') )
             define('WIKI_DEMO_FOR_NON_SUPPORTER', false);
@@ -814,7 +822,7 @@ class Wiki {
 
                 sort($crumbs);
 
-                $top .= join(get_option("incsub_meta_seperator", " > "), $crumbs);
+                $top .= implode(get_option("incsub_meta_seperator", " > "), $crumbs);
 
                 $taxonomy = "";
 
@@ -841,7 +849,7 @@ class Wiki {
 
                 $bottom = "<h3>" . $this->settings['sub_wiki_name'] . "</h3> <ul><li>";
 
-                $bottom .= join("</li><li>", $crumbs);
+                $bottom .= implode("</li><li>", $crumbs);
 
                 if (count($crumbs) == 0) {
                     $bottom = $taxonomy;
@@ -944,6 +952,7 @@ class Wiki {
             $privileges = get_post_meta($post->post_parent, 'incsub_wiki_privileges');
             update_post_meta($post->ID, 'incsub_wiki_privileges', $privileges[0] ?? null);
         } else {
+            $post = new \stdClass();
             $post->ID = 0;
             $post->post_author = '';
             $post->post_date = '';
@@ -1377,22 +1386,26 @@ class Wiki {
 
 
         $tabs	 = '<ul class="left">';
-        $tabs .= '<li class="'.join(' ', $classes['page']).'" ><a href="' . $permalink . '" >' . __('Page', 'wiki') . '</a></li>';
+        $tabs .= '<li class="'.implode(' ', $classes['page']).'" ><a href="' . $permalink . '" >' . __('Page', 'wiki') . '</a></li>';
         if (comments_open()) {
-            $tabs .= '<li class="'.join(' ', $classes['discussion']).'" ><a href="' . add_query_arg('action', 'discussion', $permalink) . '">' . __('Discussion', 'wiki') . '</a></li>';
+            $tabs .= '<li class="'.implode(' ', $classes['discussion']).'" ><a href="' . add_query_arg('action', 'discussion', $permalink) . '">' . __('Discussion', 'wiki') . '</a></li>';
         }
-        $tabs .= '<li class="'.join(' ', $classes['history']).'" ><a href="' . add_query_arg('action', 'history', $permalink) . '">' . __('History', 'wiki') . '</a></li>';
+        $tabs .= '<li class="'.implode(' ', $classes['history']).'" ><a href="' . add_query_arg('action', 'history', $permalink) . '">' . __('History', 'wiki') . '</a></li>';
         $tabs .= '</ul>';
 
         $post_type_object = get_post_type_object( get_query_var('post_type') );
 
         if ($post && current_user_can($post_type_object->cap->edit_post, $post->ID)) {
             $tabs .= '<ul class="right">';
-            $tabs .= '<li class="'.join(' ', $classes['edit']).'" ><a href="' . add_query_arg('action', 'edit', $permalink) . '">' . __('Edit', 'wiki') . '</a></li>';
-            if (is_user_logged_in()) {
-                $tabs .= '<li class="'.join(' ', $classes['advanced_edit']).'" ><a href="' . get_edit_post_link() . '" >' . __('Advanced', 'wiki') . '</a></li>';
+            if (is_user_logged_in() && $this->get_setting('wiki_enable_gutenberg')) {
+                $tabs .= '<li class="'.implode(' ', $classes['edit']).'" ><a href="' . get_edit_post_link() . '&back_to_fe=1">' . __('Edit', 'wiki') . '</a></li>';
+            } else {
+                $tabs .= '<li class="'.implode(' ', $classes['edit']).'" ><a href="' . add_query_arg('action', 'edit', $permalink) . '">' . __('Edit', 'wiki') . '</a></li>';
+                if (is_user_logged_in()) {
+                    $tabs .= '<li class="'.implode(' ', $classes['advanced_edit']).'" ><a href="' . get_edit_post_link() . '">' . __('Advanced', 'wiki') . '</a></li>';
+                }
             }
-            $tabs .= '<li class="'.join(' ', $classes['create']).'"><a href="' . add_query_arg(array('action' => 'edit', 'eaction' => 'create'), $permalink) . '">'.__('Create new', 'wiki').'</a></li>';
+            $tabs .= '<li class="'.implode(' ', $classes['create']).'"><a href="' . add_query_arg(array('action' => 'edit', 'eaction' => 'create'), $permalink) . '">'.__('Create new', 'wiki').'</a></li>';
             $tabs .= '</ul>';
         }
 
@@ -1724,8 +1737,6 @@ class Wiki {
             $this->init_admin_pages();
         }
 
-        $this->settings = get_option('wiki_settings');
-
         if (preg_match('/mu\-plugin/', $this->plugin_dir) > 0)
             load_muplugin_textdomain('wiki', dirname(plugin_basename(__FILE__)).'/languages');
         else
@@ -1857,6 +1868,7 @@ class Wiki {
                     'incsub_wiki_category',
                     'incsub_wiki_tag',
                 ),
+                'show_in_rest' => boolval($this->get_setting('wiki_enable_gutenberg')),
             )
         );
     }
@@ -2086,8 +2098,6 @@ Cancel subscription: %s", 'wiki'), 'POST_TITLE', 'POST_URL', 'EXCERPT', 'BLOGNAM
             foreach ($subscription_emails as $subscription_email){
                 $loop_notification_content = $wiki_notification_content['user'];
 
-                $loop_notification_content = $wiki_notification_content['user'];
-
                 if ($subscription_email['user_id'] > 0) {
                     if ($subscription_email['user_id'] == $post->post_author) {
                         $loop_notification_content = $wiki_notification_content['author'];
@@ -2105,6 +2115,19 @@ Cancel subscription: %s", 'wiki'), 'POST_TITLE', 'POST_URL', 'EXCERPT', 'BLOGNAM
                 wp_mail($subscription_to, $subject_content, $loop_notification_content, $message_headers);
             }
         }
+    }
+
+    public function edit_form_advanced( $post ) {
+        if ( !empty($_REQUEST['back_to_fe']) && 'incsub_wiki' === $post->post_type ) {
+            echo '<input type="hidden" id="back_to_fe" name="back_to_fe" value="1">';
+        }
+    }
+
+    function admin_enqueue_redirect_script( $hook ) {
+        if ( 'post.php' != $hook ) {
+           return;
+        }
+        wp_enqueue_script( 'my_custom_script', $this->plugin_url . 'js/admin-redirect.js', ['jquery'] );
     }
 }
 
